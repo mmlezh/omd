@@ -1,121 +1,141 @@
 import csv
 
 
-def read_file(filename):
-    with open(filename, newline="") as file:
-        return list(csv.DictReader(file, delimiter=";"))
+def read_employees(filename):
+    with open(filename, encoding='utf-8', newline='') as file:
+        return list(csv.DictReader(file, delimiter=';'))
 
 
 def hierarchy(employees):
-    hierarchy = {}
+    teams_by_department = {}
 
     for employee in employees:
-        department = employee["Департамент"]
-        team = employee["Отдел"]
+        department = employee['Департамент']
+        team = employee['Отдел']
 
-        if department not in hierarchy:
-            hierarchy[department] = set()
+        if department not in teams_by_department:
+            teams_by_department[department] = set()
 
-        hierarchy[department].add(team)
+        teams_by_department[department].add(team)
 
-    result = {
+    department_hierarchy = {
         department: sorted(teams)
-        for department, teams in sorted(hierarchy.items())
+        for department, teams in sorted(teams_by_department.items())
     }
 
-    for department, teams in result.items():
-        print(f"команды департамента \'{department}\':")
+    for department, teams in department_hierarchy.items():
+        print(f'Команды департамента \'{department}\':')
         for team in teams:
-            print(f"\t -{team}")
+            print(f'\t -{team}')
 
-    return result
+    return department_hierarchy
 
 
 def calculate_department_summary(employees):
     salaries_by_department = {}
 
     for employee in employees:
-        department = employee["Департамент"]
-        salary = int(employee["Оклад"])
+        department = employee['Департамент']
+        salary = int(employee['Оклад'])
 
         if department not in salaries_by_department:
             salaries_by_department[department] = []
 
         salaries_by_department[department].append(salary)
 
-    summary = []
+    department_summaries = []
     for department, salaries in sorted(salaries_by_department.items()):
-        summary.append(
+        department_summaries.append(
             {
-                "Департамент": department,
-                "Численность": len(salaries),
-                "Минимальный оклад": min(salaries),
-                "Максимальный оклад": max(salaries),
-                "Средний оклад": round(sum(salaries) / len(salaries), 2),
+                'Департамент': department,
+                'Численность': len(salaries),
+                'Минимальный оклад': min(salaries),
+                'Максимальный оклад': max(salaries),
+                'Средний оклад': round(sum(salaries) / len(salaries), 2),
             }
         )
 
-    return summary
+    return department_summaries
 
 
 def department_summary_report(employees):
-    summary = calculate_department_summary(employees)
+    department_summaries = calculate_department_summary(employees)
 
+    column_titles = (
+        'Департамент',
+        'Сотрудников',
+        'Мин. оклад',
+        'Макс. оклад',
+        'Средний оклад',
+    )
     header = (
-        f"{'Департамент':<15} {'Сотрудников':>11} "
-        f"{'Мин. оклад':>12} {'Макс. оклад':>13} {'Средний оклад':>15}"
+        f'{column_titles[0]:<15} {column_titles[1]:>11} '
+        f'{column_titles[2]:>12} {column_titles[3]:>13} '
+        f'{column_titles[4]:>15}'
     )
     print(header)
-    print("-" * len(header))
+    print('-' * len(header))
 
-    for row in summary:
+    for department_summary in department_summaries:
+        department = department_summary['Департамент']
+        employee_count = department_summary['Численность']
+        min_salary = department_summary['Минимальный оклад']
+        max_salary = department_summary['Максимальный оклад']
+        average_salary = department_summary['Средний оклад']
         print(
-            f"{row['Департамент']:<15} "
-            f"{row['Численность']:>11} "
-            f"{row['Минимальный оклад']:>12} "
-            f"{row['Максимальный оклад']:>13} "
-            f"{row['Средний оклад']:>15.2f}"
+            f'{department:<15} {employee_count:>11} '
+            f'{min_salary:>12} {max_salary:>13} {average_salary:>15.2f}'
         )
 
-    return summary
+    return department_summaries
 
 
-def csv_summary_report(employees, output_filename):
-    summary = calculate_department_summary(employees)
+def write_department_summary(employees, output_filename):
+    department_summaries = calculate_department_summary(employees)
     fieldnames = [
-        "Департамент",
-        "Численность",
-        "Минимальный оклад",
-        "Максимальный оклад",
-        "Средний оклад",
+        'Департамент',
+        'Численность',
+        'Минимальный оклад',
+        'Максимальный оклад',
+        'Средний оклад',
     ]
 
-    with open(output_filename, "w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames, delimiter=";")
+    with open(
+        output_filename, 'w', encoding='utf-8', newline=''
+    ) as summary_file:
+        writer = csv.DictWriter(
+            summary_file, fieldnames=fieldnames, delimiter=';'
+        )
         writer.writeheader()
-        for row in summary:
-            row_for_csv = row.copy()
-            row_for_csv["Средний оклад"] = f"{row['Средний оклад']:.2f}"
-            writer.writerow(row_for_csv)
+        for department_summary in department_summaries:
+            csv_row = department_summary.copy()
+            csv_row['Средний оклад'] = format(
+                department_summary['Средний оклад'], '.2f'
+            )
+            writer.writerow(csv_row)
 
-    print(f"результат тут: {output_filename}")
+    print(f'результат тут: {output_filename}')
     return output_filename
 
 
-def main():
-    report_number = int(input())
+def main(
+    report_number: int,
+    input_filename='Corp_Summary.csv',
+    output_filename='department_summary.csv',
+):
+    if isinstance(report_number, bool) or not isinstance(report_number, int):
+        raise TypeError('номер отчёта должен быть целым числом')
     if report_number not in (1, 2, 3):
-        raise ValueError("номер отчёта должен быть равен 1, 2 или 3")
+        raise ValueError('номер отчёта должен быть равен 1, 2 или 3')
 
-    employees = read_file("Corp_Summary.csv")
+    employees = read_employees(input_filename)
 
     if report_number == 1:
-        hierarchy(employees)
-    elif report_number == 2:
-        department_summary_report(employees)
-    elif report_number == 3:
-        csv_summary_report(employees, "department_summary.csv")
+        return hierarchy(employees)
+    if report_number == 2:
+        return department_summary_report(employees)
+    return write_department_summary(employees, output_filename)
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    main(int(input('введите номер отчёта (1, 2 или 3): ')))
